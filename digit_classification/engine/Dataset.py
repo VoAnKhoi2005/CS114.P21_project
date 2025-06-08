@@ -38,12 +38,13 @@ class CustomIterableDataset(IterableDataset):
     def __read_image(self, idx):
         img_path = self.image_lists[idx]
         try:
-            image = decode_image(img_path, mode="RGB")
+            image = Image.open(img_path).convert("L")
             label = torch.tensor(self.labels[idx])
             if self.transform:
                 image = self.transform(image)
             return image, label, img_path
-        except:
+        except Exception as e:
+            #print(f"Error reading image: {e}")
             return None
 
     def __iter__(self):

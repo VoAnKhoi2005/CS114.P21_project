@@ -1,20 +1,32 @@
+import os
 import sys
+import torch
+import matplotlib
+from matplotlib import pyplot as plt
+from torch import nn
 from torch.utils.data import DataLoader
-from torchvision import transforms
-import digit_classification.engine.Dataset as dataset
+from torchvision.transforms import v2 as transforms
+import digit_classification.engine.Dataset as ds
 from digit_classification.engine.Logger import Logger
 from digit_classification.engine.load_data import load_from_csv
 from digit_classification.engine.env_util import get_env
+from digit_classification.engine import show_batch, train_loop, val_loop
+from digit_classification.engine import History
+from digit_classification.engine.models import TransferLearningModel
+
+matplotlib.use('TkAgg')
 
 LEARNING_RATE = 1e-3
 BATCH_SIZE = 32
-EPOCH = 20
+EPOCH = 1
 IMG_SIZE = 224
+MODEL_NAME = 'resnet50'
 
 def main():
     sys.stdout = Logger("train.log")
     sys.stderr = sys.stdout
 
+    #Need .env file
     data_folder = get_env('DATA_FOLDER')
 
     train_data, train_labels, val_data, val_labels = load_from_csv(data_folder)
@@ -22,15 +34,45 @@ def main():
 
     transform = transforms.Compose([
         transforms.Resize((IMG_SIZE, IMG_SIZE)),
-        transforms.ToTensor(),
+        transforms.ToImage(),
+        transforms.ToDtype(torch.float32, scale=True),
         transforms.Normalize(mean=[0.5], std=[0.5])
     ])
 
-    train_dataset = dataset.CustomIterableDataset(train_data, train_labels, transform)
-    test_dataset = dataset.CustomIterableDataset(val_data, val_labels, transform)
+    train_dataset = ds.CustomIterableDataset(train_data, train_labels, transform)
+    test_dataset = ds.CustomIterableDataset(val_data, val_labels, transform)
 
-    train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
-    test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=True)
+    train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, num_workers=4)
+    test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, num_workers=4)
+
+    # show_batch(train_loader, IMG_SIZE)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Using {device} device")
+
+    model = TransferLearningModel(
+        model_name=MODEL_NAME,
+        num_classes=10,
+        pretrained=True,
+        freeze_features=True,
+        grayscale=True
+    ).to(device)
+    criterion = nn.CrossEntropyLoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
+
+    history = History()
+    for e in range(EPOCH):
+        print(f"Epoch {e + 1}\n-------------------------------")
+
+        loss, acc = train_loop(train_loader, model, criterion, optimizer, device)
+        history.train_loss.append(loss)
+        history.train_accuracy.append(acc)
+
+        torch.save(model.state_dict(), rf'./models/{MODEL_NAME}_model_{e}_weights.pth')
+
+        loss, acc = val_loop(test_loader, model, criterion, device)
+        history.test_loss.append(loss)
+        history.test_accuracy.append(acc)
+    print("Done!")
     return
 
 

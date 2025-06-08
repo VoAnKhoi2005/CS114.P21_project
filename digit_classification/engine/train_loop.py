@@ -1,27 +1,41 @@
-# src/engine/train_loop.py
+import time
+
 import torch
 
-def train_loop(dataloader, model, loss_func, optimizer, device):
-    size = len(dataloader.dataset)
+
+def train_loop(dataloader, model, loss_func, optimizer, device, max_batches=None):
     model.train()
-    total_loss, correct = 0, 0
-    for batch, (images, labels) in enumerate(dataloader):
+    total_loss = 0
+    correct = 0
+    total_samples = 0
+
+    start_time = time.time()
+
+    for batch_idx, (images, labels, _) in enumerate(dataloader):
         images, labels = images.to(device), labels.to(device)
         pred = model(images)
         loss = loss_func(pred, labels)
 
-        total_loss += loss.item()
-        correct += (pred.argmax(1) == labels).type(torch.float).sum().item()
-
+        optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-        optimizer.zero_grad()
 
-        if batch % 100 == 0:
-            current = batch * len(images)
-            print(f"loss: {loss.item():>7f}  [{current:>5d}/{size:>5d}]")
+        batch_size = images.size(0)
+        total_loss += loss.item() * batch_size
+        correct += (pred.argmax(1) == labels).type(torch.float).sum().item()
+        total_samples += batch_size
 
-    avg_loss = total_loss / len(dataloader)
-    accuracy = 100 * correct / size
-    print(f"Train_Accuracy: {accuracy:>0.1f}%, Train_Loss: {avg_loss:>8f}")
+        if batch_idx % 100 == 0:
+            print(f"Batch {batch_idx}: loss={loss.item():.6f}, samples_processed={total_samples}")
+
+        if max_batches is not None and batch_idx + 1 >= max_batches:
+            break
+
+    end_time = time.time()
+    elapsed = end_time - start_time
+
+    avg_loss = total_loss / total_samples if total_samples > 0 else 0
+    accuracy = 100 * correct / total_samples if total_samples > 0 else 0
+    print(f"Train Accuracy: {accuracy:.1f}%, Train Loss: {avg_loss:.6f}")
+    print(f"Training time: {elapsed:.2f} seconds")
     return avg_loss, accuracy

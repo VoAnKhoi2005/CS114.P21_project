@@ -5,7 +5,7 @@ DATA_PATH = r'E:\Code\Github\CS114.P21_project\digit_classification\data\image_r
 
 def main():
     os.makedirs(DATA_PATH, exist_ok=True)
-
+    #access image folder and load image path to train and val file
     load_image_path_to_csv(DATA_PATH)
     return
 
