@@ -38,7 +38,7 @@ class CustomIterableDataset(IterableDataset):
     def __read_image(self, idx):
         img_path = self.image_lists[idx]
         try:
-            image = Image.open(img_path).convert("L")
+            image = Image.open(img_path).convert("RGB")
             label = torch.tensor(self.labels[idx])
             if self.transform:
                 image = self.transform(image)

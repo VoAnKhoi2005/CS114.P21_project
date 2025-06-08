@@ -25,7 +25,7 @@ def train_loop(dataloader, model, loss_func, optimizer, device, max_batches=None
         correct += (pred.argmax(1) == labels).type(torch.float).sum().item()
         total_samples += batch_size
 
-        if batch_idx % 100 == 0:
+        if batch_idx % 500 == 0:
             print(f"Batch {batch_idx}: loss={loss.item():.6f}, samples_processed={total_samples}")
 
         if max_batches is not None and batch_idx + 1 >= max_batches:
