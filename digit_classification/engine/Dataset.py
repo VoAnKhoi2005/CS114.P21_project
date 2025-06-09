@@ -1,5 +1,5 @@
 import torch
-from PIL import UnidentifiedImageError
+from PIL import UnidentifiedImageError, ImageOps
 from PIL import Image
 from torch.utils.data import Dataset, IterableDataset
 from torchvision.io import decode_image
@@ -30,21 +30,25 @@ class CustomDataset(Dataset):
 
 
 class CustomIterableDataset(IterableDataset):
-    def __init__(self, image_lists, labels, transform=None):
+    def __init__(self, image_lists, labels, grayscale=False, transform=None):
         self.image_lists = image_lists
         self.labels = labels
         self.transform = transform
+        self.grayscale = grayscale
 
     def __read_image(self, idx):
         img_path = self.image_lists[idx]
         try:
-            image = Image.open(img_path).convert("RGB")
+            with Image.open(img_path) as img:
+                img = ImageOps.exif_transpose(img)
+                image = img.convert("L" if self.grayscale else "RGB")
+
             label = torch.tensor(self.labels[idx])
             if self.transform:
                 image = self.transform(image)
             return image, label, img_path
         except Exception as e:
-            #print(f"Error reading image: {e}")
+            # print(f"Error reading image: {e}")
             return None
 
     def __iter__(self):

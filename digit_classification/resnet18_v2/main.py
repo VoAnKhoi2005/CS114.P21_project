@@ -20,7 +20,7 @@ matplotlib.use('TkAgg')
 
 LEARNING_RATE = 1e-3
 BATCH_SIZE = 32
-EPOCH = 1
+EPOCH = 20
 IMG_SIZE = 224
 NUM_CLASSES = 10
 MODEL_NAME = 'resnet18'
@@ -46,13 +46,13 @@ def main():
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     ])
 
-    train_dataset = ds.CustomIterableDataset(train_data, train_labels, transform)
-    test_dataset = ds.CustomIterableDataset(val_data, val_labels, transform)
+    train_dataset = ds.CustomIterableDataset(train_data, train_labels, transform=transform)
+    test_dataset = ds.CustomIterableDataset(val_data, val_labels, transform=transform)
 
     train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, num_workers=4)
     test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, num_workers=4)
 
-    show_batch(train_loader, IMG_SIZE)
+    # show_batch(train_loader, IMG_SIZE)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using {device} device")
 
