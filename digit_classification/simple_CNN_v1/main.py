@@ -24,7 +24,7 @@ EPOCH = 20
 IMG_SIZE = 64
 NUM_CLASSES = 1
 KERNEL_SIZE = 3
-MODEL_NAME = 'simple_CNN'
+MODEL_NAME = 'simple_CNN_v1'
 
 class SimpleCNN(nn.Module):
     def __init__(self, kernel_size=3, num_classes=10):
@@ -34,7 +34,7 @@ class SimpleCNN(nn.Module):
         self.conv2 = nn.Conv2d(32, 64, kernel_size, padding)
         self.pool = nn.MaxPool2d(2, 2)
         self.dropout = nn.Dropout(0.25)
-        self.fc1 = nn.Linear(64 * 14 * 14, 128)
+        self.fc1 = nn.Linear(64 * 16 * 16, 128)
         self.fc2 = nn.Linear(128, num_classes)
 
     def forward(self, x):
