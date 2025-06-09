@@ -7,11 +7,10 @@ import torch
 import torch.nn.functional as F
 from torch import nn, optim
 from torch.utils.data import DataLoader
-from torchvision.models import ResNet18_Weights, resnet18
 from torchvision.transforms import v2 as transforms
 
 import digit_classification.engine.Dataset as ds
-from digit_classification.engine import History, show_batch
+from digit_classification.engine import History
 from digit_classification.engine import train_loop, val_loop, plot_history
 from digit_classification.engine.Logger import Logger
 from digit_classification.engine.env_util import get_env
