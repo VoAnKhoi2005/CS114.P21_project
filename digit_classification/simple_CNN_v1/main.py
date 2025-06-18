@@ -26,15 +26,15 @@ NUM_CLASSES = 1
 KERNEL_SIZE = 3
 MODEL_NAME = 'simple_CNN_v1'
 
-class SimpleCNN(nn.Module):
+class SimpleCNN_v1(nn.Module):
     def __init__(self, kernel_size=3, num_classes=10):
-        super(SimpleCNN, self).__init__()
+        super(SimpleCNN_v1, self).__init__()
         padding = kernel_size // 2
         self.conv1 = nn.Conv2d(1, 32, kernel_size, padding)
         self.conv2 = nn.Conv2d(32, 64, kernel_size, padding)
         self.pool = nn.MaxPool2d(2, 2)
         self.dropout = nn.Dropout(0.25)
-        self.fc1 = nn.Linear(64 * 16 * 16, 128)
+        self.fc1 = nn.Linear(64 * 14 * 14, 128)
         self.fc2 = nn.Linear(128, num_classes)
 
     def forward(self, x):
@@ -77,7 +77,7 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using {device} device")
 
-    model = SimpleCNN(kernel_size=KERNEL_SIZE, num_classes=NUM_CLASSES).to(device)
+    model = SimpleCNN_v1(kernel_size=KERNEL_SIZE, num_classes=NUM_CLASSES).to(device)
 
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)

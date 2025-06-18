@@ -1,5 +1,5 @@
 import torch
-from PIL import UnidentifiedImageError, ImageOps
+from PIL import UnidentifiedImageError, ImageOps, ImageFilter
 from PIL import Image
 from torch.utils.data import Dataset, IterableDataset
 from torchvision.io import decode_image
@@ -39,7 +39,7 @@ class CustomIterableDataset(IterableDataset):
     def __read_image(self, idx):
         img_path = self.image_lists[idx]
         try:
-            with Image.open(img_path) as img:
+            with Image.open(img_path).filter(ImageFilter.SHARPEN) as img:
                 img = ImageOps.exif_transpose(img)
                 image = img.convert("L" if self.grayscale else "RGB")
 
