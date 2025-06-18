@@ -29,7 +29,7 @@ def clone_github():
         except Exception as e:
             print(f"Failed to clone {link} into {path}. Error: {e}")
 
-def load_image_path_to_csv(data_folder, split: float = 0.8):
+def load_image_path_to_csv(data_folder, split: float = 0.8, version = 1):
     img_paths = []
     labels = []
     image_extensions = {'.jpg', '.jpeg', '.png'}
@@ -70,20 +70,20 @@ def load_image_path_to_csv(data_folder, split: float = 0.8):
         "path": train_dataset_path,
         "label": train_label
     })
-    train.to_csv("train_data.csv", index=False)
+    train.to_csv(f"train_data_v{version}.csv", index=False)
 
     val = pd.DataFrame({
         "path": val_dataset_path,
         "label": val_label
     })
-    val.to_csv("val_data.csv", index=False)
+    val.to_csv(f"val_data_v{version}.csv", index=False)
 
-def load_from_csv(data_folder):
-    train = pd.read_csv(os.path.join(data_folder, "train_data.csv"))
+def load_from_csv(data_folder, version = 1):
+    train = pd.read_csv(os.path.join(data_folder, f"train_data_v{version}.csv"))
     train_data = train['path'].values
     train_label = train['label'].astype(int).values
 
-    test = pd.read_csv(os.path.join(data_folder, "val_data.csv"))
+    test = pd.read_csv(os.path.join(data_folder, f"val_data_v{version}.csv"))
     test_data = test['path'].values
     test_label = test['label'].astype(int).values
     return train_data, train_label, test_data, test_label
