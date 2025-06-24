@@ -7,7 +7,7 @@ from torchvision.transforms import v2 as transforms
 from torch import nn
 import torch.nn.functional as F
 
-from digit_classification.digit_net_v1.main import AdvancedDigitNet
+from digit_classification.digit_net_v1.main import AdvancedDigitNet_v1
 
 LEARNING_RATE = 1e-3
 BATCH_SIZE = 32

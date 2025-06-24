@@ -78,12 +78,16 @@ def load_image_path_to_csv(data_folder, split: float = 0.8, version = 1):
     })
     val.to_csv(f"val_data_v{version}.csv", index=False)
 
-def load_from_csv(data_folder, version = 1):
-    train = pd.read_csv(os.path.join(data_folder, f"train_data_v{version}.csv"))
+def load_from_csv(data_folder, train_limit: int | None = None, test_limit: int | None = None, data_version = 1):
+    train = pd.read_csv(os.path.join(data_folder, f"train_data_v{data_version}.csv"))
     train_data = train['path'].values
     train_label = train['label'].astype(int).values
 
-    test = pd.read_csv(os.path.join(data_folder, f"val_data_v{version}.csv"))
+    test = pd.read_csv(os.path.join(data_folder, f"val_data_v{data_version}.csv"))
     test_data = test['path'].values
     test_label = test['label'].astype(int).values
-    return train_data, train_label, test_data, test_label
+
+    if train_limit is None or test_limit is None:
+        return train_data, train_label, test_data, test_label
+    else:
+        return train_data[:train_limit], train_label[:train_limit], test_data[:test_limit], test_label[:test_limit]
