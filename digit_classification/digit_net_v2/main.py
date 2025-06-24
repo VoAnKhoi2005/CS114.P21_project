@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader
 from torchvision.transforms import v2 as transforms
 
 import digit_classification.engine.Dataset as ds
-from digit_classification.engine import History
+from digit_classification.engine import History, show_batch
 from digit_classification.engine import train_loop, val_loop, plot_history
 from digit_classification.engine.Logger import Logger
 from digit_classification.engine.env_util import get_env
@@ -20,22 +20,22 @@ matplotlib.use('TkAgg')
 
 LEARNING_RATE = 1e-3
 BATCH_SIZE = 32
-EPOCH = 30
-IMG_SIZE = 64
+EPOCH = 20
+IMG_SIZE = 128
 NUM_CLASSES = 1
-KERNEL_SIZE = 5
-MODEL_NAME = 'digit_net_v1'
+KERNEL_SIZE = 3
+MODEL_NAME = 'digit_net_v2'
 
-class AdvancedDigitNet_v1(nn.Module):
+class AdvancedDigitNet_v2(nn.Module):
     def __init__(self):
-        super(AdvancedDigitNet_v1, self).__init__()
+        super(AdvancedDigitNet_v2, self).__init__()
         self.conv1 = nn.Conv2d(1, 32, 3, padding=1)
         self.conv2 = nn.Conv2d(32, 64, 3, padding=1)
         self.bn1 = nn.BatchNorm2d(32)
         self.bn2 = nn.BatchNorm2d(64)
         self.pool = nn.MaxPool2d(2, 2)
         self.dropout1 = nn.Dropout(0.25)
-        self.fc1 = nn.Linear(64 * 16 * 16, 128)
+        self.fc1 = nn.Linear(64 * 32 * 32, 128)
         self.bn3 = nn.BatchNorm1d(128)
         self.dropout2 = nn.Dropout(0.5)
         self.fc2 = nn.Linear(128, 10)
@@ -44,7 +44,7 @@ class AdvancedDigitNet_v1(nn.Module):
         x = self.pool(F.relu(self.bn1(self.conv1(x))))
         x = self.pool(F.relu(self.bn2(self.conv2(x))))
         x = self.dropout1(x)
-        x = x.view(x.size(0), -1)
+        x = torch.flatten(x, 1)
         x = F.relu(self.bn3(self.fc1(x)))
         x = self.dropout2(x)
         x = self.fc2(x)
@@ -57,16 +57,22 @@ def main():
     #Need .env file
     data_folder = get_env('DATA_FOLDER')
 
-    train_data, train_labels, val_data, val_labels = load_from_csv(data_folder)
+    train_data, train_labels, val_data, val_labels = load_from_csv(data_folder, train_limit=100000, test_limit=10000, data_version=2)
     print(f"Number of train images: {len(train_data)}\nNumber of val images: {len(val_data)}\n")
 
     transform = transforms.Compose([
+        transforms.Grayscale(num_output_channels=1),
         transforms.Resize((IMG_SIZE, IMG_SIZE)),
-        transforms.RandomRotation(10),
-        transforms.RandomAffine(0, translate=(0.1, 0.1)),
+
+        transforms.RandomApply([
+            transforms.RandomRotation(degrees=5),
+            transforms.RandomAffine(degrees=0, translate=(0.05, 0.05)),
+            transforms.RandomPerspective(distortion_scale=0.1, p=0.5),
+        ], p=0.7),
+
         transforms.ToImage(),
         transforms.ToDtype(torch.float32, scale=True),
-        transforms.Normalize((0.1307,), (0.3081,))
+        transforms.Normalize(mean=[0.5], std=[0.5])
     ])
 
     train_dataset = ds.CustomIterableDataset(train_data, train_labels, grayscale=True, transform=transform)
@@ -79,10 +85,10 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using {device} device")
 
-    model = AdvancedDigitNet_v1().to(device)
+    model = AdvancedDigitNet_v2().to(device)
 
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.AdamW(model.parameters(), lr=LEARNING_RATE, weight_decay=1e-4)
+    optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
 
     os.makedirs(r'./models', exist_ok=True)
     history = History()

@@ -7,7 +7,7 @@ from torchvision.transforms import v2 as transforms
 from torch import nn
 import torch.nn.functional as F
 
-from digit_classification.digit_net_v1.main import AdvancedDigitNet
+from digit_classification.digit_net_v1.main import AdvancedDigitNet_v1
 from digit_classification.simple_CNN_v1.main import SimpleCNN_v1
 
 IMG_SIZE = 64
@@ -30,7 +30,7 @@ def main():
 
     models = []
 
-    digit_net_model = AdvancedDigitNet()
+    digit_net_model = AdvancedDigitNet_v1()
     digit_net_model.load_state_dict(torch.load(r'./digit_net_v1/models/digit_net_v1_model_28_weights.pth'))
     digit_net_model.to(device)
     digit_net_model.eval()

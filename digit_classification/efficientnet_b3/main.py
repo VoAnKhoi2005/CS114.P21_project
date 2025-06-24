@@ -31,7 +31,7 @@ def main():
     #Need .env file
     data_folder = get_env('DATA_FOLDER')
 
-    train_data, train_labels, val_data, val_labels = load_from_csv(data_folder, version=2)
+    train_data, train_labels, val_data, val_labels = load_from_csv(data_folder, data_version=2)
     print(f"Number of train images: {len(train_data)}\nNumber of val images: {len(val_data)}\n")
 
     transform = transforms.Compose([
