@@ -8,15 +8,18 @@ import torch.nn.functional as F
 
 from digit_classification.digit_net_v1.main import AdvancedDigitNet_v1
 
+from pillow_heif import register_heif_opener
+register_heif_opener()
+
 LEARNING_RATE = 1e-3
 BATCH_SIZE = 32
 EPOCH = 20
 IMG_SIZE = 64
 NUM_CLASSES = 1
 KERNEL_SIZE = 3
-MODEL_NAME = 'simple_CNN_v1'
-TEST_FOLDER = r'./data/test_data'
-image_extensions = ('.jpg', '.jpeg', '.png')
+MODEL_NAME = 'digit_net_v1'
+TEST_FOLDER = r'E:\Code\Github\CS114.P21_project\digit_classification\data\test_data'
+image_extensions = ('.jpg', '.jpeg', '.png', '.jfif', '.heic')
 
 def main():
     transform = transforms.Compose([

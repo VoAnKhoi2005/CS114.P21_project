@@ -20,9 +20,9 @@ matplotlib.use('TkAgg')
 
 LEARNING_RATE = 1e-3
 BATCH_SIZE = 32
-EPOCH = 20
+EPOCH = 30
 IMG_SIZE = 128
-NUM_CLASSES = 1
+NUM_CLASSES = 10
 KERNEL_SIZE = 3
 MODEL_NAME = 'digit_net_v2'
 
@@ -52,12 +52,23 @@ class AdvancedDigitNet_v2(nn.Module):
 
 def main():
     sys.stdout = Logger("train.log")
-    sys.stderr = sys.stdout
+
+    print("=" * 40)
+    print("Training Configuration")
+    print("=" * 40)
+    print(f"MODEL_NAME: {MODEL_NAME}")
+    print(f"IMG_SIZE: {IMG_SIZE}")
+    print(f"NUM_CLASSES: {NUM_CLASSES}")
+    print(f"LEARNING_RATE: {LEARNING_RATE}")
+    print(f"BATCH_SIZE: {BATCH_SIZE}")
+    print(f"EPOCH: {EPOCH}")
+    print(f"KERNEL_SIZE: {KERNEL_SIZE}")
+    print("=" * 40)
 
     #Need .env file
     data_folder = get_env('DATA_FOLDER')
 
-    train_data, train_labels, val_data, val_labels = load_from_csv(data_folder, train_limit=100000, test_limit=10000, data_version=2)
+    train_data, train_labels, val_data, val_labels = load_from_csv(data_folder, data_version=3)
     print(f"Number of train images: {len(train_data)}\nNumber of val images: {len(val_data)}\n")
 
     transform = transforms.Compose([
