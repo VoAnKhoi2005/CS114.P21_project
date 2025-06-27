@@ -9,6 +9,10 @@ from torch import nn, optim
 from torch.utils.data import DataLoader
 from torchvision.transforms import v2 as transforms
 
+import cv2
+import numpy as np
+from PIL import Image
+
 import digit_classification.engine.Dataset as ds
 from digit_classification.engine import History, show_batch
 from digit_classification.engine import train_loop, val_loop, plot_history
@@ -20,35 +24,106 @@ matplotlib.use('TkAgg')
 
 LEARNING_RATE = 1e-3
 BATCH_SIZE = 32
-EPOCH = 30
-IMG_SIZE = 128
+EPOCH = 35
+IMG_SIZE = 64
 NUM_CLASSES = 10
 KERNEL_SIZE = 3
-MODEL_NAME = 'digit_net_v2'
+MODEL_NAME = 'simple_CNN_v4'
 
-class AdvancedDigitNet_v2(nn.Module):
-    def __init__(self):
-        super(AdvancedDigitNet_v2, self).__init__()
-        self.conv1 = nn.Conv2d(1, 32, 3, padding=1)
-        self.conv2 = nn.Conv2d(32, 64, 3, padding=1)
-        self.bn1 = nn.BatchNorm2d(32)
-        self.bn2 = nn.BatchNorm2d(64)
+class SimpleCNN_v4(nn.Module):
+    def __init__(self, kernel_size=3, num_classes=10):
+        super(SimpleCNN_v4, self).__init__()
+        padding = kernel_size // 2
+        self.conv1 = nn.Conv2d(1, 32, kernel_size, padding)
+        self.conv2 = nn.Conv2d(32, 64, kernel_size, padding)
         self.pool = nn.MaxPool2d(2, 2)
-        self.dropout1 = nn.Dropout(0.25)
-        self.fc1 = nn.Linear(64 * 32 * 32, 128)
-        self.bn3 = nn.BatchNorm1d(128)
-        self.dropout2 = nn.Dropout(0.5)
-        self.fc2 = nn.Linear(128, 10)
+        self.dropout = nn.Dropout(0.25)
+        self.fc1 = nn.Linear(64 * 14 * 14, 128)
+        self.fc2 = nn.Linear(128, num_classes)
 
     def forward(self, x):
-        x = self.pool(F.relu(self.bn1(self.conv1(x))))
-        x = self.pool(F.relu(self.bn2(self.conv2(x))))
-        x = self.dropout1(x)
-        x = torch.flatten(x, 1)
-        x = F.relu(self.bn3(self.fc1(x)))
-        x = self.dropout2(x)
+        x = F.relu(self.conv1(x))
+        x = self.pool(x)
+        x = F.relu(self.conv2(x))
+
+        x = self.pool(x)
+        x = self.dropout(x)
+        x = x.view(x.size(0), -1)
+        x = F.relu(self.fc1(x))
         x = self.fc2(x)
         return x
+
+class RemoveLines_v1:
+    def __init__(
+        self,
+        canny_thresh1=50,
+        canny_thresh2=150,
+        min_line_length=100,
+        max_line_gap=5,
+        inpaint_radius=2,
+        adapt_blocksize=15,
+        adapt_C=4,
+        cleanup_kernel_size=2,
+        mask_dilate_iter=2
+    ):
+        self.c_thresh1        = canny_thresh1
+        self.c_thresh2        = canny_thresh2
+        self.min_line_len     = min_line_length
+        self.max_line_gap     = max_line_gap
+        self.inpaint_rad      = inpaint_radius
+        self.adapt_block      = adapt_blocksize
+        self.adapt_C          = adapt_C
+        self.cleanup_kernel   = cleanup_kernel_size
+        self.mask_dilate_iter = mask_dilate_iter
+
+    def __call__(self, img):
+        # 1) Grayscale & CLAHE
+        gray = np.array(img.convert("L"))
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        enhanced = clahe.apply(gray)
+
+        # 2) Edge → Hough → line‐mask
+        edges = cv2.Canny(enhanced, self.c_thresh1, self.c_thresh2)
+        lines = cv2.HoughLinesP(
+            edges, 1, np.pi/180, threshold=80,
+            minLineLength=self.min_line_len,
+            maxLineGap=self.max_line_gap
+        )
+        mask = np.zeros_like(gray)
+        if lines is not None:
+            for x1, y1, x2, y2 in lines[:, 0]:
+                cv2.line(mask, (x1, y1), (x2, y2), 255, 1)
+        # dilate mask a bit more aggressively
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+        mask = cv2.dilate(mask, kernel, iterations=self.mask_dilate_iter)
+
+        # 3) Inpaint to soften the line remnants
+        color = np.array(img.convert("RGB"))
+        inpainted = cv2.inpaint(color, mask, self.inpaint_rad, cv2.INPAINT_TELEA)
+        cleaned = cv2.cvtColor(inpainted, cv2.COLOR_RGB2GRAY)
+
+        # 4) Adaptive Gaussian threshold to binary
+        binary = cv2.adaptiveThreshold(
+            cleaned, 255,
+            cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+            cv2.THRESH_BINARY,
+            self.adapt_block,
+            self.adapt_C
+        )
+
+        # 5) Force‐white any pixel in our dilated line‐mask
+        binary[mask > 0] = 255
+
+        # 6) Tiny morphological opening to remove thin streaks
+        small_kernel = cv2.getStructuringElement(
+            cv2.MORPH_RECT,
+            (self.cleanup_kernel, self.cleanup_kernel)
+        )
+        binary = cv2.morphologyEx(binary, cv2.MORPH_OPEN, small_kernel)
+
+        return Image.fromarray(binary)
+
+
 
 def main():
     sys.stdout = Logger("train.log")
@@ -72,15 +147,9 @@ def main():
     print(f"Number of train images: {len(train_data)}\nNumber of val images: {len(val_data)}\n")
 
     transform = transforms.Compose([
-        transforms.Grayscale(num_output_channels=1),
         transforms.Resize((IMG_SIZE, IMG_SIZE)),
-
-        transforms.RandomApply([
-            transforms.RandomRotation(degrees=5),
-            transforms.RandomAffine(degrees=0, translate=(0.05, 0.05)),
-            transforms.RandomPerspective(distortion_scale=0.1, p=0.5),
-        ], p=0.7),
-
+        RemoveLines_v1(),
+        transforms.RandomRotation(10),
         transforms.ToImage(),
         transforms.ToDtype(torch.float32, scale=True),
         transforms.Normalize(mean=[0.5], std=[0.5])
@@ -93,10 +162,12 @@ def main():
     test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, num_workers=4)
 
     # show_batch(test_loader, IMG_SIZE)
+    # return
+
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using {device} device")
 
-    model = AdvancedDigitNet_v2().to(device)
+    model = SimpleCNN_v4(kernel_size=KERNEL_SIZE, num_classes=NUM_CLASSES).to(device)
 
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)

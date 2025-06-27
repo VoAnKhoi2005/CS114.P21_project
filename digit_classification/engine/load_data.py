@@ -32,7 +32,7 @@ def clone_github():
 def load_image_path_to_csv(data_folder, split: float = 0.8, version = 1):
     img_paths = []
     labels = []
-    image_extensions = {'.jpg', '.jpeg', '.png'}
+    image_extensions = {'.jpg', '.jpeg', '.png', '.jfif', '.gif', '.webp'}
 
     for folder in os.listdir(data_folder):
         folder_path = os.path.join(data_folder, folder)

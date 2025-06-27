@@ -20,33 +20,32 @@ matplotlib.use('TkAgg')
 
 LEARNING_RATE = 1e-3
 BATCH_SIZE = 32
-EPOCH = 30
-IMG_SIZE = 128
+EPOCH = 50
+IMG_SIZE = 64
 NUM_CLASSES = 10
 KERNEL_SIZE = 3
-MODEL_NAME = 'digit_net_v2'
+MODEL_NAME = 'simple_CNN_v2'
 
-class AdvancedDigitNet_v2(nn.Module):
-    def __init__(self):
-        super(AdvancedDigitNet_v2, self).__init__()
-        self.conv1 = nn.Conv2d(1, 32, 3, padding=1)
-        self.conv2 = nn.Conv2d(32, 64, 3, padding=1)
-        self.bn1 = nn.BatchNorm2d(32)
-        self.bn2 = nn.BatchNorm2d(64)
+class SimpleCNN_v2(nn.Module):
+    def __init__(self, kernel_size=3, num_classes=10):
+        super(SimpleCNN_v2, self).__init__()
+        padding = kernel_size // 2
+        self.conv1 = nn.Conv2d(1, 32, kernel_size, padding)
+        self.conv2 = nn.Conv2d(32, 64, kernel_size, padding)
         self.pool = nn.MaxPool2d(2, 2)
-        self.dropout1 = nn.Dropout(0.25)
-        self.fc1 = nn.Linear(64 * 32 * 32, 128)
-        self.bn3 = nn.BatchNorm1d(128)
-        self.dropout2 = nn.Dropout(0.5)
-        self.fc2 = nn.Linear(128, 10)
+        self.dropout = nn.Dropout(0.25)
+        self.fc1 = nn.Linear(64 * 14 * 14, 128)
+        self.fc2 = nn.Linear(128, num_classes)
 
     def forward(self, x):
-        x = self.pool(F.relu(self.bn1(self.conv1(x))))
-        x = self.pool(F.relu(self.bn2(self.conv2(x))))
-        x = self.dropout1(x)
-        x = torch.flatten(x, 1)
-        x = F.relu(self.bn3(self.fc1(x)))
-        x = self.dropout2(x)
+        x = F.relu(self.conv1(x))
+        x = self.pool(x)
+        x = F.relu(self.conv2(x))
+
+        x = self.pool(x)
+        x = self.dropout(x)
+        x = x.view(x.size(0), -1)
+        x = F.relu(self.fc1(x))
         x = self.fc2(x)
         return x
 
@@ -72,15 +71,9 @@ def main():
     print(f"Number of train images: {len(train_data)}\nNumber of val images: {len(val_data)}\n")
 
     transform = transforms.Compose([
-        transforms.Grayscale(num_output_channels=1),
         transforms.Resize((IMG_SIZE, IMG_SIZE)),
-
-        transforms.RandomApply([
-            transforms.RandomRotation(degrees=5),
-            transforms.RandomAffine(degrees=0, translate=(0.05, 0.05)),
-            transforms.RandomPerspective(distortion_scale=0.1, p=0.5),
-        ], p=0.7),
-
+        transforms.RandomRotation(10),
+        transforms.RandomAffine(degrees=0, translate=(0.1, 0.1)),
         transforms.ToImage(),
         transforms.ToDtype(torch.float32, scale=True),
         transforms.Normalize(mean=[0.5], std=[0.5])
@@ -96,7 +89,7 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using {device} device")
 
-    model = AdvancedDigitNet_v2().to(device)
+    model = SimpleCNN_v2(kernel_size=KERNEL_SIZE, num_classes=NUM_CLASSES).to(device)
 
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
